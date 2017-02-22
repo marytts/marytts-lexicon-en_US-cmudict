@@ -1,3 +1,14 @@
+buildscript {
+    repositories {
+        maven {
+            url "https://plugins.gradle.org/m2/"
+        }
+    }
+    dependencies {
+        classpath "gradle.plugin.de.dfki.mary:gradle-marytts-lexicon-compiler-plugin:0.1.0"
+    }
+}
+
 repositories {
     ivy {
         url 'http://festvox.org/packed/festival/2.4/'
@@ -72,8 +83,6 @@ compileLexicon {
     }
     phoneMapping << [0: '', 1: '', 2: '']
 }
-
-apply from: "$rootDir/buildLogic.gradle"
 
 processResources {
     from unpackCmuDict, {
