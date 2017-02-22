@@ -71,10 +71,6 @@ task processCmuDict {
     }
 }
 
-ext {
-    locale = 'en_US'
-}
-
 apply plugin: 'de.dfki.mary.lexicon-compiler'
 
 compileLexicon {
