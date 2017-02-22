@@ -13,6 +13,9 @@ group 'de.dfki.mary'
 version '0.1.0-SNAPSHOT'
 
 repositories {
+    maven {
+        url 'https://dl.bintray.com/marytts/marytts'
+    }
     ivy {
         url 'http://festvox.org/packed/festival/2.4/'
         layout 'pattern', {
