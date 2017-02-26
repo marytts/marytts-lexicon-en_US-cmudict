@@ -63,6 +63,8 @@ task processCmuDict {
                 '1': "'",
                 '2': ','
         ]
+        def allophoneSetFile = file('modules/en/us/lexicon/allophones.en_US.xml')
+        def allophoneSet = marytts.modules.phonemiser.AllophoneSet.getAllophoneSet(allophoneSetFile.path)
         destFile.withWriter { dest ->
             fileTree(unpackCmuDict.destinationDir).include('*.scm').each { scmFile ->
                 scmFile.eachLine('UTF-8') { line ->
@@ -72,7 +74,8 @@ task processCmuDict {
                             def mappedStress = stressMapping[stress] ?: ''
                             mappedStress + mappedPhone
                         })
-                        def transcriptionNoSpaces = transcriptionMapped.replaceAll(' ', '')
+                        def transcriptionSyllabified = allophoneSet.syllabify(transcriptionMapped)
+                        def transcriptionNoSpaces = transcriptionSyllabified.replaceAll(' ', '')
                         dest.println "$lemma $transcriptionNoSpaces"
                     }
                 }
