@@ -53,11 +53,30 @@ task processCmuDict {
     ext.destFile = file("$unpackCmuDict.destinationDir/cmudict.txt")
     outputs.file destFile
     doLast {
+        def phoneMapping = [:]
+        file('modules/en/synthesis/sampa2mrpa_en.map').eachLine { line ->
+            (line =~ /(.+)<->(.+)/).each { match, sampa, mrpa ->
+                phoneMapping[mrpa] = sampa
+            }
+        }
+        def stressMapping = [
+                '1': "'",
+                '2': ','
+        ]
+        def allophoneSetFile = file('modules/en/us/lexicon/allophones.en_US.xml')
+        def allophoneSet = marytts.modules.phonemiser.AllophoneSet.getAllophoneSet(allophoneSetFile.path)
         destFile.withWriter { dest ->
             fileTree(unpackCmuDict.destinationDir).include('*.scm').each { scmFile ->
                 scmFile.eachLine('UTF-8') { line ->
                     (line =~ /\("(\w+)" (\w+) \((.+)\)\)/).each { match, lemma, pos, transcription ->
-                        dest.println "$lemma ${transcription.replaceAll(' ', '')}"
+                        def transcriptionMapped = transcription.replaceAll(~/\b(\S+?)([0-2])?\b/, { all, phone, stress ->
+                            def mappedPhone = phoneMapping[phone] ?: phone
+                            def mappedStress = stressMapping[stress] ?: ''
+                            mappedStress + mappedPhone
+                        })
+                        def transcriptionSyllabified = allophoneSet.syllabify(transcriptionMapped)
+                        def transcriptionNoSpaces = transcriptionSyllabified.replaceAll(' ', '')
+                        dest.println "$lemma $transcriptionNoSpaces"
                     }
                 }
             }
@@ -69,13 +88,6 @@ compileLexicon {
     dependsOn processCmuDict
     allophonesFile = file('modules/en/us/lexicon/allophones.en_US.xml')
     lexiconFile = processCmuDict.destFile
-    phoneMapping = [:]
-    file('modules/en/synthesis/sampa2mrpa_en.map').eachLine { line ->
-        (line =~ /(.+)<->(.+)/).each { match, sampa, mrpa ->
-            phoneMapping[mrpa] = sampa
-        }
-    }
-    phoneMapping << [0: '', 1: '', 2: '']
 }
 
 processResources {
