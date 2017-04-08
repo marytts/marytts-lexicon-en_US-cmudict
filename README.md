@@ -1,7 +1,7 @@
 US English lexicon for MaryTTS
 ==============================
 
-Based on CMUdict via Festival.
+Based on [CMUdict](http://www.speech.cs.cmu.edu/cgi-bin/cmudict) via [Festival](http://www.cstr.ed.ac.uk/projects/festival/).
 
 Building
 --------
