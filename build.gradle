@@ -103,6 +103,14 @@ processResources {
     }
 }
 
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(8)
+    }
+    withSourcesJar()
+    withJavadocJar()
+}
+
 task sourceJar(type: Jar) {
     from sourceSets.main.allJava
 }
