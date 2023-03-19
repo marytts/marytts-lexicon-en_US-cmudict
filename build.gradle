@@ -1,3 +1,5 @@
+import marytts.modules.phonemiser.AllophoneSet
+
 plugins {
     id 'de.dfki.mary.lexicon-compiler' version '0.2.0'
     id 'maven-publish'
@@ -72,13 +74,24 @@ def unpackCmuDictTask = tasks.register('unpackCmuDict') {
     }
 }
 
-task processCmuDict {
-    dependsOn unpackCmuDictTask
-    ext.destFile = unpackCmuDictTask.get().destDir.file('cmudict.txt').get().asFile
+tasks.register('processCmuDict') {
+    def srcDir = objects.directoryProperty()
+            .convention(unpackCmuDictTask.get().destDir)
+    def mappingFile = objects.fileProperty()
+            .convention(layout.projectDirectory.dir('modules/en/synthesis').file('sampa2mrpa_en.map'))
+    def allophoneSetFile = objects.fileProperty()
+            .convention(layout.projectDirectory.dir('modules/en/us/lexicon').file('allophones.en_US.xml'))
+    ext.destFile = objects.fileProperty()
+            .convention(layout.buildDirectory.file('cmudict.txt'))
+
+    inputs.dir srcDir
+    inputs.file mappingFile
+    inputs.file allophoneSetFile
     outputs.file destFile
+
     doLast {
         def phoneMapping = [:]
-        file('modules/en/synthesis/sampa2mrpa_en.map').eachLine { line ->
+        mappingFile.get().asFile.eachLine { line ->
             (line =~ /(.+)<->(.+)/).each { match, sampa, mrpa ->
                 phoneMapping[mrpa] = sampa
             }
@@ -87,10 +100,9 @@ task processCmuDict {
                 '1': "'",
                 '2': ','
         ]
-        def allophoneSetFile = file('modules/en/us/lexicon/allophones.en_US.xml')
-        def allophoneSet = marytts.modules.phonemiser.AllophoneSet.getAllophoneSet(allophoneSetFile.path)
-        destFile.withWriter { dest ->
-            fileTree(unpackCmuDict.destDir).include('*.scm').each { scmFile ->
+        def allophoneSet = AllophoneSet.getAllophoneSet(allophoneSetFile.get().asFile.path)
+        destFile.get().asFile.withWriter { dest ->
+            fileTree(srcDir).include('*.scm').each { scmFile ->
                 scmFile.eachLine('UTF-8') { line ->
                     (line =~ /\("(\w+)" (\w+) \((.+)\)\)/).each { match, lemma, pos, transcription ->
                         def transcriptionMapped = transcription.replaceAll(~/\b(\S+?)([0-2])?\b/, { all, phone, stress ->
@@ -100,7 +112,7 @@ task processCmuDict {
                         })
                         def transcriptionSyllabified = allophoneSet.syllabify(transcriptionMapped)
                         def transcriptionNoSpaces = transcriptionSyllabified.replaceAll(' ', '')
-                        dest.println "$lemma $transcriptionNoSpaces"
+                        dest.writeLine("$lemma $transcriptionNoSpaces")
                     }
                 }
             }
@@ -111,7 +123,7 @@ task processCmuDict {
 compileLexicon {
     dependsOn processCmuDict
     allophonesFile = file('modules/en/us/lexicon/allophones.en_US.xml')
-    lexiconFile = processCmuDict.destFile
+    lexiconFile = processCmuDict.destFile.get().asFile
 }
 
 processResources {
