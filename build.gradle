@@ -7,23 +7,30 @@ group 'de.dfki.mary'
 version '0.2.0-SNAPSHOT'
 
 repositories {
-    ivy {
-        url 'http://festvox.org/packed/festival/2.4/'
-        allowInsecureProtocol = true
-        patternLayout {
-            artifact '[module]_[classifier].[ext]'
-        }
-        metadataSources {
-            artifact()
-        }
-    }
-    ivy {
-        url 'https://www.cstr.ed.ac.uk/downloads/festival/2.4/'
-        patternLayout {
-            artifact '[module]_[classifier].[ext]'
-        }
-        metadataSources {
-            artifact()
+    exclusiveContent {
+        forRepositories(
+                ivy {
+                    url 'http://festvox.org/packed/festival/2.4/'
+                    allowInsecureProtocol = true
+                    patternLayout {
+                        artifact '[module]_[classifier].[ext]'
+                    }
+                    metadataSources {
+                        artifact()
+                    }
+                },
+                ivy {
+                    url 'https://www.cstr.ed.ac.uk/downloads/festival/2.4/'
+                    patternLayout {
+                        artifact '[module]_[classifier].[ext]'
+                    }
+                    metadataSources {
+                        artifact()
+                    }
+                }
+        )
+        filter {
+            includeModule 'org.festvox', 'festlex'
         }
     }
 }
