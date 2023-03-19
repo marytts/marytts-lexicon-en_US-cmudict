@@ -74,13 +74,14 @@ def unpackCmuDictTask = tasks.register('unpackCmuDict') {
     }
 }
 
-tasks.register('processCmuDict') {
+def allophoneSetFile = objects.fileProperty()
+        .convention(layout.projectDirectory.dir('modules/en/us/lexicon').file('allophones.en_US.xml'))
+
+def processCmuDictTask = tasks.register('processCmuDict') {
     def srcDir = objects.directoryProperty()
             .convention(unpackCmuDictTask.get().destDir)
     def mappingFile = objects.fileProperty()
             .convention(layout.projectDirectory.dir('modules/en/synthesis').file('sampa2mrpa_en.map'))
-    def allophoneSetFile = objects.fileProperty()
-            .convention(layout.projectDirectory.dir('modules/en/us/lexicon').file('allophones.en_US.xml'))
     ext.destFile = objects.fileProperty()
             .convention(layout.buildDirectory.file('cmudict.txt'))
 
@@ -120,14 +121,14 @@ tasks.register('processCmuDict') {
     }
 }
 
-compileLexicon {
-    dependsOn processCmuDict
-    allophonesFile = file('modules/en/us/lexicon/allophones.en_US.xml')
+tasks.named('compileLexicon').configure {
+    dependsOn processCmuDictTask
+    allophonesFile = allophoneSetFile.get().asFile
     lexiconFile = processCmuDict.destFile.get().asFile
 }
 
-processResources {
-    from unpackCmuDict, {
+tasks.named('processResources').configure {
+    from unpackCmuDictTask, {
         include 'COPYING'
     }
 }
