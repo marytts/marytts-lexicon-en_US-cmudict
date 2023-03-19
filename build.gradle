@@ -43,25 +43,38 @@ dependencies {
     cmudict group: 'org.festvox', name: 'festlex', version: '0.4', classifier: 'CMU', ext: 'tar.gz'
 }
 
-task copyCmuDict(type: Copy) {
-    from configurations.cmudict
-    into "$buildDir/cmudict-packed"
-}
+def unpackCmuDictTask = tasks.register('unpackCmuDict') {
+    def config = configurations.named('cmudict')
+    ext.destDir = objects.directoryProperty()
+            .convention(layout.buildDirectory.dir('cmudict'))
 
-task unpackCmuDict(type: Copy) {
-    dependsOn copyCmuDict
-    from tarTree(file("$copyCmuDict.destinationDir/festlex-0.4-CMU.tar.gz"))
-    into "$buildDir/cmudict"
-    include '**/cmudict-0.4.scm', '**/cmudict_extensions.scm', '**/COPYING'
-    eachFile {
-        it.path = it.name
+    inputs.property 'config', config
+    outputs.dir destDir
+
+    doLast {
+        copy {
+            into destDir
+            from config
+            filesMatching '*.tar.gz', { tarDetails ->
+                copy {
+                    into destDir
+                    from tarTree(tarDetails.file)
+                    include '**/cmudict-0.4.scm',
+                            '**/cmudict_extensions.scm',
+                            '**/COPYING'
+                    eachFile {
+                        it.path = it.name
+                    }
+                }
+                tarDetails.exclude()
+            }
+        }
     }
-    includeEmptyDirs = false
 }
 
 task processCmuDict {
-    dependsOn unpackCmuDict
-    ext.destFile = file("$unpackCmuDict.destinationDir/cmudict.txt")
+    dependsOn unpackCmuDictTask
+    ext.destFile = unpackCmuDictTask.get().destDir.file('cmudict.txt').get().asFile
     outputs.file destFile
     doLast {
         def phoneMapping = [:]
@@ -77,7 +90,7 @@ task processCmuDict {
         def allophoneSetFile = file('modules/en/us/lexicon/allophones.en_US.xml')
         def allophoneSet = marytts.modules.phonemiser.AllophoneSet.getAllophoneSet(allophoneSetFile.path)
         destFile.withWriter { dest ->
-            fileTree(unpackCmuDict.destinationDir).include('*.scm').each { scmFile ->
+            fileTree(unpackCmuDict.destDir).include('*.scm').each { scmFile ->
                 scmFile.eachLine('UTF-8') { line ->
                     (line =~ /\("(\w+)" (\w+) \((.+)\)\)/).each { match, lemma, pos, transcription ->
                         def transcriptionMapped = transcription.replaceAll(~/\b(\S+?)([0-2])?\b/, { all, phone, stress ->
