@@ -122,9 +122,8 @@ def processCmuDictTask = tasks.register('processCmuDict') {
 }
 
 tasks.named('compileLexicon').configure {
-    dependsOn processCmuDictTask
-    allophonesFile = allophoneSetFile.get().asFile
-    lexiconFile = processCmuDict.destFile.get().asFile
+    allophonesFile.set allophoneSetFile
+    lexiconFile.set processCmuDictTask.get().destFile
 }
 
 tasks.named('processResources').configure {
