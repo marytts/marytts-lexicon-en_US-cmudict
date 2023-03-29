@@ -1,2 +1,1 @@
 rootProject.name = 'marytts-lexicon-en_US-cmudict'
-includeBuild 'gradle-marytts-lexicon-compiler-plugin'
