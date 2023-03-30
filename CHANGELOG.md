@@ -12,7 +12,7 @@ US English lexicon for MaryTTS
 ### Changed
 
 - Build with Gradle v7.5.1
-- Upgraded lexicon compiler plugin to v0.2.0
+- Upgraded lexicon compiler plugin to v0.3.0
 
 [v0.1.0] - 2017-03-01
 ---------------------

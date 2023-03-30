@@ -1,5 +1,7 @@
+import marytts.modules.phonemiser.AllophoneSet
+
 plugins {
-    id 'de.dfki.mary.lexicon-compiler' version '0.2.0'
+    id 'de.dfki.mary.lexicon-compiler' version '0.3.0'
     id 'maven-publish'
 }
 
@@ -7,23 +9,30 @@ group 'de.dfki.mary'
 version '0.2.0-SNAPSHOT'
 
 repositories {
-    ivy {
-        url 'http://festvox.org/packed/festival/2.4/'
-        allowInsecureProtocol = true
-        patternLayout {
-            artifact '[module]_[classifier].[ext]'
-        }
-        metadataSources {
-            artifact()
-        }
-    }
-    ivy {
-        url 'https://www.cstr.ed.ac.uk/downloads/festival/2.4/'
-        patternLayout {
-            artifact '[module]_[classifier].[ext]'
-        }
-        metadataSources {
-            artifact()
+    exclusiveContent {
+        forRepositories(
+                ivy {
+                    url 'http://festvox.org/packed/festival/2.4/'
+                    allowInsecureProtocol = true
+                    patternLayout {
+                        artifact '[module]_[classifier].[ext]'
+                    }
+                    metadataSources {
+                        artifact()
+                    }
+                },
+                ivy {
+                    url 'https://www.cstr.ed.ac.uk/downloads/festival/2.4/'
+                    patternLayout {
+                        artifact '[module]_[classifier].[ext]'
+                    }
+                    metadataSources {
+                        artifact()
+                    }
+                }
+        )
+        filter {
+            includeModule 'org.festvox', 'festlex'
         }
     }
 }
@@ -36,29 +45,54 @@ dependencies {
     cmudict group: 'org.festvox', name: 'festlex', version: '0.4', classifier: 'CMU', ext: 'tar.gz'
 }
 
-task copyCmuDict(type: Copy) {
-    from configurations.cmudict
-    into "$buildDir/cmudict-packed"
-}
+def unpackCmuDictTask = tasks.register('unpackCmuDict') {
+    def config = configurations.named('cmudict')
+    ext.destDir = objects.directoryProperty()
+            .convention(layout.buildDirectory.dir('cmudict'))
 
-task unpackCmuDict(type: Copy) {
-    dependsOn copyCmuDict
-    from tarTree(file("$copyCmuDict.destinationDir/festlex-0.4-CMU.tar.gz"))
-    into "$buildDir/cmudict"
-    include '**/cmudict-0.4.scm', '**/cmudict_extensions.scm', '**/COPYING'
-    eachFile {
-        it.path = it.name
+    inputs.property 'config', config
+    outputs.dir destDir
+
+    doLast {
+        copy {
+            into destDir
+            from config
+            filesMatching '*.tar.gz', { tarDetails ->
+                copy {
+                    into destDir
+                    from tarTree(tarDetails.file)
+                    include '**/cmudict-0.4.scm',
+                            '**/cmudict_extensions.scm',
+                            '**/COPYING'
+                    eachFile {
+                        it.path = it.name
+                    }
+                }
+                tarDetails.exclude()
+            }
+        }
     }
-    includeEmptyDirs = false
 }
 
-task processCmuDict {
-    dependsOn unpackCmuDict
-    ext.destFile = file("$unpackCmuDict.destinationDir/cmudict.txt")
+def allophoneSetFile = objects.fileProperty()
+        .convention(layout.projectDirectory.dir('modules/en/us/lexicon').file('allophones.en_US.xml'))
+
+def processCmuDictTask = tasks.register('processCmuDict') {
+    def srcDir = objects.directoryProperty()
+            .convention(unpackCmuDictTask.get().destDir)
+    def mappingFile = objects.fileProperty()
+            .convention(layout.projectDirectory.dir('modules/en/synthesis').file('sampa2mrpa_en.map'))
+    ext.destFile = objects.fileProperty()
+            .convention(layout.buildDirectory.file('cmudict.txt'))
+
+    inputs.dir srcDir
+    inputs.file mappingFile
+    inputs.file allophoneSetFile
     outputs.file destFile
+
     doLast {
         def phoneMapping = [:]
-        file('modules/en/synthesis/sampa2mrpa_en.map').eachLine { line ->
+        mappingFile.get().asFile.eachLine { line ->
             (line =~ /(.+)<->(.+)/).each { match, sampa, mrpa ->
                 phoneMapping[mrpa] = sampa
             }
@@ -67,10 +101,9 @@ task processCmuDict {
                 '1': "'",
                 '2': ','
         ]
-        def allophoneSetFile = file('modules/en/us/lexicon/allophones.en_US.xml')
-        def allophoneSet = marytts.modules.phonemiser.AllophoneSet.getAllophoneSet(allophoneSetFile.path)
-        destFile.withWriter { dest ->
-            fileTree(unpackCmuDict.destinationDir).include('*.scm').each { scmFile ->
+        def allophoneSet = AllophoneSet.getAllophoneSet(allophoneSetFile.get().asFile.path)
+        destFile.get().asFile.withWriter { dest ->
+            fileTree(srcDir).include('*.scm').each { scmFile ->
                 scmFile.eachLine('UTF-8') { line ->
                     (line =~ /\("(\w+)" (\w+) \((.+)\)\)/).each { match, lemma, pos, transcription ->
                         def transcriptionMapped = transcription.replaceAll(~/\b(\S+?)([0-2])?\b/, { all, phone, stress ->
@@ -80,7 +113,7 @@ task processCmuDict {
                         })
                         def transcriptionSyllabified = allophoneSet.syllabify(transcriptionMapped)
                         def transcriptionNoSpaces = transcriptionSyllabified.replaceAll(' ', '')
-                        dest.println "$lemma $transcriptionNoSpaces"
+                        dest.writeLine("$lemma $transcriptionNoSpaces")
                     }
                 }
             }
@@ -88,14 +121,13 @@ task processCmuDict {
     }
 }
 
-compileLexicon {
-    dependsOn processCmuDict
-    allophonesFile = file('modules/en/us/lexicon/allophones.en_US.xml')
-    lexiconFile = processCmuDict.destFile
+tasks.named('compileLexicon').configure {
+    allophonesFile.set allophoneSetFile
+    lexiconFile.set processCmuDictTask.get().destFile
 }
 
-processResources {
-    from unpackCmuDict, {
+tasks.named('processResources').configure {
+    from unpackCmuDictTask, {
         include 'COPYING'
     }
 }
