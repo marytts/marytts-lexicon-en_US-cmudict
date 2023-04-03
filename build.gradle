@@ -3,6 +3,7 @@ import marytts.modules.phonemiser.AllophoneSet
 plugins {
     id 'de.dfki.mary.lexicon-compiler' version '0.3.0'
     id 'maven-publish'
+    id 'signing'
 }
 
 group 'de.dfki.mary'
@@ -190,4 +191,13 @@ publishing {
             credentials(PasswordCredentials)
         }
     }
+}
+
+signing {
+    required { isReleaseVersion }
+    sign publishing.publications.mavenJava
+}
+
+tasks.withType(Sign).configureEach {
+    onlyIf { isReleaseVersion }
 }
