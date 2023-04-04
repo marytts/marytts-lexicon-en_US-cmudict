@@ -4,6 +4,9 @@ US English lexicon for MaryTTS
 [Unreleased]
 ------------
 
+[v0.1.1] - 2023-04-04
+---------------------
+
 ### Added
 
 - CI via GitHub Actions
@@ -27,5 +30,6 @@ US English lexicon for MaryTTS
 
 Functional parity with MaryTTS v5.2 (plus syllabification and stress fixes)
 
-[Unreleased]: https://github.com/marytts/marytts-lexicon-en_US-cmudict/compare/v0.1.0...HEAD
-[v0.1.0]: https://github.com/marytts/marytts-lexicon-en_US-cmudict/tree/v0.1.0
+[Unreleased]: https://github.com/marytts/marytts-lexicon-en_US-cmudict/tree/master
+[v0.1.1]: https://github.com/marytts/marytts-lexicon-en_US-cmudict/releases/tag/v0.1.1
+[v0.1.0]: https://github.com/marytts/marytts-lexicon-en_US-cmudict/releases/tag/v0.1.0
